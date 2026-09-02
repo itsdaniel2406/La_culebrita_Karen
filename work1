@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Snake Neon Power - Creado por Dani v1</title>
+    <title>LA CULEBRITA KAREN - Creado por Dani v1</title>
     <style>
         * {
             box-sizing: border-box;
@@ -29,12 +29,12 @@
         }
         h1 {
             margin: 0;
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             color: #00ffcc;
             text-shadow: 0 0 10px #00ffcc;
         }
         .author {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: #ff007f;
             font-weight: bold;
             letter-spacing: 1px;
@@ -96,4 +96,269 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 4px
+            box-shadow: 0 4px 0 #009977;
+            transition: transform 0.1s;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        .btn-power {
+            background: #ff007f;
+            border-color: #ff77bc;
+            box-shadow: 0 4px 0 #99004d;
+            width: 100%;
+            max-width: 200px;
+            font-size: 0.9rem;
+            gap: 5px;
+        }
+        .btn-power:disabled {
+            background: #444;
+            border-color: #666;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>LA CULEBRITA KAREN</h1>
+        <div class="author">Creado por Dani v1</div>
+        <div class="stats">
+            <div class="stat-item">Nivel: <span id="lvl">1</span></div>
+            <div class="stat-item">Puntos: <span id="score">0</span></div>
+            <div class="stat-item">Poder: <span id="power-status">LISTO</span></div>
+        </div>
+    </header>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="300" height="300"></canvas>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-power" id="powerBtn" onclick="activatePower()">✨ PORTAL FASE (3s)</button>
+        <div class="row">
+            <button class="btn" onclick="setDir('UP')">▲</button>
+        </div>
+        <div class="row">
+            <button class="btn" onclick="setDir('LEFT')">◀</button>
+            <button class="btn" onclick="setDir('DOWN')">▼</button>
+            <button class="btn" onclick="setDir('RIGHT')">▶</button>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const GRID = 15;
+    const TILE_SIZE = canvas.width / GRID;
+    
+    let snake = [{x: 7, y: 7}];
+    let dir = 'RIGHT';
+    let nextDir = 'RIGHT';
+    let food = {};
+    let blocks = [];
+    let score = 0;
+    let level = 1;
+    let gameLoop;
+    let speed = 150;
+    
+    // Habilidad especial
+    let powerActive = false;
+    let powerCooldown = false;
+
+    // Tipos de Comida Elementales
+    const FOOD_TYPES = [
+        { type: 'NORMAL', color: '#00ffcc', points: 10 },
+        { type: 'FIRE', color: '#ff3300', points: 25 },  // Destruye obstáculos cercanos
+        { type: 'ICE', color: '#00ccff', points: 15 },   // Ralentiza el juego
+        { type: 'POISON', color: '#a000ff', points: 30 } // Puntos extra
+    ];
+
+    function initGame() {
+        snake = [{x: 7, y: 7}, {x: 6, y: 7}];
+        dir = 'RIGHT';
+        nextDir = 'RIGHT';
+        score = 0;
+        level = 1;
+        speed = 150;
+        updateStats();
+        generateObstacles();
+        spawnFood();
+        if(gameLoop) clearInterval(gameLoop);
+        gameLoop = setInterval(draw, speed);
+    }
+
+    function generateObstacles() {
+        blocks = [];
+        const count = level * 2;
+        for(let i=0; i < count; i++) {
+            let bx, by;
+            do {
+                bx = Math.floor(Math.random() * GRID);
+                by = Math.floor(Math.random() * GRID);
+            } while((bx === 7 && by === 7) || blocks.some(b => b.x === bx && b.y === by));
+            blocks.push({x: bx, y: by});
+        }
+    }
+
+    function spawnFood() {
+        let fx, fy;
+        do {
+            fx = Math.floor(Math.random() * GRID);
+            fy = Math.floor(Math.random() * GRID);
+        } while(
+            snake.some(segment => segment.x === fx && segment.y === fy) ||
+            blocks.some(b => b.x === fx && b.y === fy)
+        );
+
+        const randomType = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
+        food = { x: fx, y: fy, ...randomType };
+    }
+
+    function setDir(newDir) {
+        if (newDir === 'UP' && dir !== 'DOWN') nextDir = 'UP';
+        if (newDir === 'DOWN' && dir !== 'UP') nextDir = 'DOWN';
+        if (newDir === 'LEFT' && dir !== 'RIGHT') nextDir = 'LEFT';
+        if (newDir === 'RIGHT' && dir !== 'LEFT') nextDir = 'RIGHT';
+    }
+
+    function activatePower() {
+        if(powerCooldown || powerActive) return;
+        
+        powerActive = true;
+        document.getElementById('power-status').innerText = "ACTIVO";
+        document.getElementById('power-status').style.color = "#ff007f";
+        document.getElementById('powerBtn').disabled = true;
+
+        setTimeout(() => {
+            powerActive = false;
+            powerCooldown = true;
+            document.getElementById('power-status').innerText = "RECARGANDO";
+            document.getElementById('power-status').style.color = "#ff9900";
+            
+            setTimeout(() => {
+                powerCooldown = false;
+                document.getElementById('power-status').innerText = "LISTO";
+                document.getElementById('power-status').style.color = "#00ffcc";
+                document.getElementById('powerBtn').disabled = false;
+            }, 5000); // Cooldown de 5s
+        }, 3000); // Duración de 3s
+    }
+
+    function draw() {
+        dir = nextDir;
+        let headX = snake[0].x;
+        let headY = snake[0].y;
+
+        if (dir === 'UP') headY--;
+        if (dir === 'DOWN') headY++;
+        if (dir === 'LEFT') headX--;
+        if (dir === 'RIGHT') headX++;
+
+        // Manejo de fronteras (Si activa el poder atraviesa paredes)
+        if (powerActive) {
+            if (headX < 0) headX = GRID - 1;
+            if (headX >= GRID) headX = 0;
+            if (headY < 0) headY = GRID - 1;
+            if (headY >= GRID) headY = 0;
+        } else {
+            if (headX < 0 || headX >= GRID || headY < 0 || headY >= GRID) {
+                return gameOver();
+            }
+        }
+
+        // Colisión con obstáculos (Ignorados si el poder está activo)
+        if (!powerActive && blocks.some(b => b.x === headX && b.y === headY)) {
+            return gameOver();
+        }
+
+        // Colisión con el propio cuerpo
+        if (!powerActive && snake.some(s => s.x === headX && s.y === headY)) {
+            return gameOver();
+        }
+
+        const newHead = {x: headX, y: headY};
+        snake.unshift(newHead);
+
+        // Comer alimento
+        if (headX === food.x && headY === food.y) {
+            score += food.points;
+            
+            // Efecto Fuego: Rompe bloques cercanos
+            if (food.type === 'FIRE') {
+                blocks = blocks.filter(b => Math.hypot(b.x - headX, b.y - headY) > 2);
+            }
+
+            // Subir de nivel cada 50 puntos
+            if (Math.floor(score / 50) + 1 > level) {
+                level++;
+                speed = Math.max(60, speed - 15);
+                clearInterval(gameLoop);
+                gameLoop = setInterval(draw, speed);
+                generateObstacles();
+            }
+
+            updateStats();
+            spawnFood();
+        } else {
+            snake.pop();
+        }
+
+        // Renderizado en pantalla
+        ctx.fillStyle = "#050508";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Dibujar Bloques Obstáculo
+        ctx.fillStyle = "#ff0055";
+        blocks.forEach(b => {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "#ff0055";
+            ctx.fillRect(b.x * TILE_SIZE, b.y * TILE_SIZE, TILE_SIZE - 2, TILE_SIZE - 2);
+        });
+
+        // Dibujar Comida
+        ctx.fillStyle = food.color;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = food.color;
+        ctx.beginPath();
+        ctx.arc((food.x + 0.5) * TILE_SIZE, (food.y + 0.5) * TILE_SIZE, TILE_SIZE / 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dibujar Serpiente
+        snake.forEach((part, index) => {
+            ctx.fillStyle = powerActive ? '#ff007f' : (index === 0 ? '#ffffff' : '#00ffcc');
+            ctx.shadowBlur = powerActive ? 15 : 10;
+            ctx.shadowColor = powerActive ? '#ff007f' : '#00ffcc';
+            ctx.fillRect(part.x * TILE_SIZE, part.y * TILE_SIZE, TILE_SIZE - 2, TILE_SIZE - 2);
+        });
+
+        ctx.shadowBlur = 0; // Limpiar sombras
+    }
+
+    function updateStats() {
+        document.getElementById('score').innerText = score;
+        document.getElementById('lvl').innerText = level;
+    }
+
+    function gameOver() {
+        clearInterval(gameLoop);
+        alert(`¡Juego Terminado! \nScore: ${score}\nNivel Alcanzado: ${level}`);
+        initGame();
+    }
+
+    // Controles por teclado para pruebas en PC
+    document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp') setDir('UP');
+        if (e.key === 'ArrowDown') setDir('DOWN');
+        if (e.key === 'ArrowLeft') setDir('LEFT');
+        if (e.key === 'ArrowRight') setDir('RIGHT');
+        if (e.key === ' ') activatePower();
+    });
+
+    initGame();
+</script>
+</body>
+</html>
